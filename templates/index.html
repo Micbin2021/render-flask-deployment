@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatLGPT</title>
+    <style>
+        body {
+            background-color: black;
+            color: #00FF00;
+            font-family: monospace;
+            font-size: 16px;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #terminal {
+            flex-grow: 1;
+            padding: 10px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            border-bottom: 1px solid #00FF00;
+        }
+        .input-line {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+        }
+        .prefix {
+            margin-right: 10px;
+        }
+        .user-input {
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            color: #00FF00;
+            font-family: monospace;
+            font-size: 16px;
+            outline: none;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .assistant {
+            color: #00FF00;
+        }
+        .user {
+            color: #FFFFFF;
+        }
+        .typing-indicator {
+            font-style: italic;
+            color: #008000;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal">
+        <div class="message assistant">Witaj w ChatLGPT!</div>
+        <!-- Wiadomości będą dodawane dynamicznie tutaj -->
+    </div>
+    <div class="input-line">
+        <span class="prefix">Użytkownik:</span>
+        <input type="text" id="user_input" class="user-input" autofocus autocomplete="off">
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const userInput = document.getElementById('user_input');
+
+        // Funkcja do przewijania terminala do dołu
+        const scrollToBottom = () => {
+            terminal.scrollTop = terminal.scrollHeight;
+        };
+
+        // Obsługa wpisywania wiadomości i wysyłania
+        userInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const message = userInput.value.trim();
+                if (message === '') return;
+
+                // Wyświetlenie wiadomości użytkownika
+                const userMessage = document.createElement('div');
+                userMessage.classList.add('message', 'user');
+                userMessage.textContent = `> ${message}`;
+                terminal.appendChild(userMessage);
+
+                // Wyczyść pole tekstowe
+                userInput.value = '';
+
+                // Dodanie wskaźnika pisania
+                const typingIndicator = document.createElement('div');
+                typingIndicator.classList.add('message', 'assistant', 'typing-indicator');
+                typingIndicator.textContent = 'Myślę...';
+                terminal.appendChild(typingIndicator);
+                scrollToBottom();
+
+                // Wysłanie wiadomości do serwera
+                const response = await fetch('/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                }).then(res => res.json());
+
+                // Usunięcie wskaźnika pisania
+                terminal.removeChild(typingIndicator);
+
+                // Wyświetlenie odpowiedzi od asystenta z animacją
+                const assistantMessage = document.createElement('div');
+                assistantMessage.classList.add('message', 'assistant');
+                terminal.appendChild(assistantMessage);
+
+                const text = response.response;
+                let i = 0;
+                const typingEffect = setInterval(() => {
+                    if (i < text.length) {
+                        assistantMessage.textContent += text[i];
+                        i++;
+                        scrollToBottom();
+                    } else {
+                        clearInterval(typingEffect);
+                    }
+                }, 50);
+            }
+        });
+
+        // Skupienie na polu tekstowym po załadowaniu strony
+        window.addEventListener('load', () => {
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
